@@ -155,3 +155,6 @@ ehthumbs_vista.db
 # Tool specific cache/config
 .idea/ # JetBrains IDEs (PyCharm, etc.) - uncomment if used
 *.swp # Vim swap files
+
+# Migrations
+migrations/versions/

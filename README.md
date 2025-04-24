@@ -54,21 +54,16 @@ capconduit/
 ├── .env                  # Environment variables (DB URI, secrets) - DO NOT COMMIT SECRETS
 ├── .flaskenv             # Flask CLI environment variables
 ├── .gitignore            # Git ignore rules
-├── .python-version       # Target Python version (for pyenv)
 ├── README.md             # This file
-├── dbcleanup.sh          # Utility script to clean PostgreSQL DB (USE WITH CAUTION)
 ├── requirements.txt      # Python package dependencies
 ├── sample_data.sql       # SQL script to populate DB with sample data
 ├── run.py                # Basic script to run Flask development server
-├── wsgi.py               # WSGI entry point for production servers
-├── handoff.md            # Project context document
-├── masterplan.md         # Project goals and design document
-└── progress.md           # Project progress tracking document
+└── wsgi.py               # WSGI entry point for production servers
 ```
 
 ## 4. Setup and Installation
 
-Follow these steps to set up the development environment on a Debian/Ubuntu-based system (like the target GCP VM).
+Follow these steps to set up the development environment on a Debian/Ubuntu-based system.
 
 **4.1. Prerequisites:**
 

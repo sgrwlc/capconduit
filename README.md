@@ -204,11 +204,11 @@ pip install -r requirements.txt
 
 ---
 
-**Consolidated Guide: Installing Asterisk 20 from Source on Debian 12 for CapConduit**
+# Consolidated Guide: Installing Asterisk 20 from Source on Debian 12 for CapConduit**
 
 This guide details installing Asterisk 20 from source, including dependencies needed for PJSIP, PostgreSQL Realtime Architecture (ARA) integration, and AGI scripting used by the CapConduit platform.
 
-**1. Update System Packages**
+## 1. Update System Packages**
 
 Ensure your package list and installed packages are up-to-date:
 
@@ -217,7 +217,7 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-**2. Install Dependencies**
+## 2. Install Dependencies**
 
 Install essential build tools, libraries required for Asterisk core features, and specific libraries needed for CapConduit's PostgreSQL ARA integration and AGI scripting:
 
@@ -241,7 +241,7 @@ sudo apt install -y \
     libpq-dev
 ```
 
-**3. Download and Extract Asterisk Source Code**
+## 3. Download and Extract Asterisk Source Code**
 
 Navigate to the `/usr/src` directory, download the latest stable Asterisk 20 tarball, and extract it:
 
@@ -253,7 +253,7 @@ sudo tar -xvf asterisk-20-current.tar.gz
 cd asterisk-20.*
 ```
 
-**4. Configure Asterisk Build Options (Menuselect)**
+## 4. Configure Asterisk Build Options (Menuselect)**
 
 Run the initial configuration script:
 
@@ -303,7 +303,7 @@ Ensure the following are **DISABLED** (`[ ]`):
 
 Press `x` to save and exit `menuselect`.
 
-**5. Compile and Install Asterisk**
+## 5. Compile and Install Asterisk**
 
 Compile Asterisk using multiple cores for speed:
 
@@ -335,7 +335,7 @@ sudo ldconfig
 *Verification (Optional):* Check if the binary exists (even if `which` doesn't find it for your user):
 `ls -l /usr/sbin/asterisk`
 
-**6. Set Up Asterisk User and Permissions**
+## 6. Set Up Asterisk User and Permissions**
 
 Create a dedicated Asterisk user and group:
 
@@ -370,7 +370,7 @@ sudo sed -i 's/;runuser = asterisk/runuser = asterisk/' /etc/asterisk/asterisk.c
 sudo sed -i 's/;rungroup = asterisk/rungroup = asterisk/' /etc/asterisk/asterisk.conf
 ```
 
-**7. Create Minimal Bootstrap Configuration Files**
+## 7. Create Minimal Bootstrap Configuration Files**
 
 Since `make samples` was skipped, create essential config files:
 
@@ -402,7 +402,7 @@ Since `make samples` was skipped, create essential config files:
     sudo chown asterisk:asterisk /etc/asterisk
     ```
 
-**8. Start, Enable, and Verify Asterisk Service**
+## 8. Start, Enable, and Verify Asterisk Service**
 
 Start the service:
 

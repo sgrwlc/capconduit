@@ -1,7 +1,3 @@
--- sample_data.sql - CapConduit Redesigned Sample Data (v3.1 - Regenerated)
--- For database: call_platform_db or call_platform_test_db
--- Assumes schema corresponding to migration 'e2f8b789dd4e' is applied.
-
 BEGIN; -- Start Transaction
 
 -- === Users ===
@@ -210,4 +206,4 @@ COMMIT; -- Commit Transaction
 
 VACUUM ANALYZE; -- Update statistics for the query planner
 
-SELECT 'CapConduit Sample Data v3.1 (Regenerated) loaded successfully!' AS status;
+SELECT 'CapConduit Sample Data loaded successfully!' AS status;

@@ -201,3 +201,237 @@ pip install -r requirements.txt
 *   `/api/seller/logs/`: Seller Call Log Viewing
 *   `/api/internal/log_call`: Internal Call Logging (Requires Token)
 *   `/api/internal/route_info`: Internal Routing Info (Requires Token)
+
+---
+
+**Consolidated Guide: Installing Asterisk 20 from Source on Debian 12 for CapConduit**
+
+This guide details installing Asterisk 20 from source, including dependencies needed for PJSIP, PostgreSQL Realtime Architecture (ARA) integration, and AGI scripting used by the CapConduit platform.
+
+**1. Update System Packages**
+
+Ensure your package list and installed packages are up-to-date:
+
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+**2. Install Dependencies**
+
+Install essential build tools, libraries required for Asterisk core features, and specific libraries needed for CapConduit's PostgreSQL ARA integration and AGI scripting:
+
+```bash
+sudo apt install -y \
+    git \
+    curl \
+    wget \
+    build-essential \
+    pkg-config \
+    autoconf \
+    libtool \
+    libedit-dev \
+    libssl-dev \
+    libncurses5-dev \
+    uuid-dev \
+    libxml2-dev \
+    libjansson-dev \
+    libsqlite3-dev \
+    unixodbc-dev \
+    libpq-dev
+```
+
+**3. Download and Extract Asterisk Source Code**
+
+Navigate to the `/usr/src` directory, download the latest stable Asterisk 20 tarball, and extract it:
+
+```bash
+cd /usr/src/
+sudo wget https://downloads.asterisk.org/pub/telephony/asterisk/asterisk-20-current.tar.gz
+sudo tar -xvf asterisk-20-current.tar.gz
+# Navigate into the extracted directory (e.g., asterisk-20.13.0)
+cd asterisk-20.*
+```
+
+**4. Configure Asterisk Build Options (Menuselect)**
+
+Run the initial configuration script:
+
+```bash
+sudo ./configure
+```
+
+Use `make menuselect` to customize the modules to be built. This is crucial for including necessary features and excluding unnecessary ones.
+
+```bash
+sudo make menuselect
+```
+
+Navigate the menu using arrow keys, Enter, and Spacebar. Ensure the following are **ENABLED** (`[*]`):
+
+*   **Resource Modules:**
+    *   `res_config_pgsql` *(Essential for CapConduit ARA)*
+    *   `res_pjsip` *(Core PJSIP)*
+    *   `res_pjsip_session`, `res_pjsip_pubsub`, `res_pjsip_outbound_registration`, `res_pjsip_endpoint_identifier_ip` *(Common PJSIP resources)*
+    *   `res_sorcery_config` *(Needed for PJSIP config backend)*
+    *   `res_odbc` *(Useful for func_odbc if needed)*
+    *   `res_agi` *(Essential for AGI scripting)*
+    *   `res_crypto`, `res_rtp_asterisk`, `res_timing_timerfd` *(Core resources)*
+*   **Channel Drivers:**
+    *   `chan_pjsip` *(The required PJSIP channel driver)*
+*   **Applications:**
+    *   `app_dial`, `app_hangup`, `app_playback`, `app_answer`, `app_agi`, `app_set`
+    *   `app_groupcount` *(Essential for concurrency checking)*
+    *   `app_stack` *(Core dialplan functions)*
+*   **Functions:**
+    *   `func_group_count` *(For GROUP_COUNT())*
+    *   `func_channel`, `func_callerid`, `func_cdr`, `func_strings`
+    *   `func_odbc` *(Enable if needed for complex dialplan DB lookups)*
+*   **Core Sound Packages:**
+    *   Select desired English formats (e.g., `CORE-SOUNDS-EN-ULAW`, `CORE-SOUNDS-EN-ALAW`, `CORE-SOUNDS-EN-GSM`)
+*   **Extras Sound Packages:** (Optional)
+    *   Select corresponding English formats.
+
+Ensure the following are **DISABLED** (`[ ]`):
+
+*   **Channel Drivers:**
+    *   `chan_sip` *(Use PJSIP instead)*
+    *   Others not needed (e.g., `chan_iax2`, `chan_dahdi` unless required)
+*   **Resource Modules:**
+    *   `res_config_odbc` *(Use res_config_pgsql for PJSIP ARA)*
+    *   Others not needed (e.g., `res_config_ldap`, `res_config_sqlite3`)
+
+Press `x` to save and exit `menuselect`.
+
+**5. Compile and Install Asterisk**
+
+Compile Asterisk using multiple cores for speed:
+
+```bash
+NUM_CORES=$(nproc)
+sudo make -j$(($NUM_CORES + 1))
+```
+
+Install the compiled binaries and modules:
+
+```bash
+sudo make install
+```
+
+**DO NOT RUN `make samples`**. We will create configurations manually.
+
+Install the systemd service files and create basic configuration directories:
+
+```bash
+sudo make config
+```
+
+Update the system's shared library cache:
+
+```bash
+sudo ldconfig
+```
+
+*Verification (Optional):* Check if the binary exists (even if `which` doesn't find it for your user):
+`ls -l /usr/sbin/asterisk`
+
+**6. Set Up Asterisk User and Permissions**
+
+Create a dedicated Asterisk user and group:
+
+```bash
+sudo groupadd asterisk
+sudo useradd -r -d /var/lib/asterisk -g asterisk asterisk
+```
+
+Set correct ownership for Asterisk directories (including the config directory):
+
+```bash
+sudo chown -R asterisk:asterisk /var/lib/asterisk
+sudo chown -R asterisk:asterisk /var/log/asterisk
+sudo chown -R asterisk:asterisk /var/run/asterisk
+sudo chown -R asterisk:asterisk /var/spool/asterisk
+sudo chown -R asterisk:asterisk /usr/lib/asterisk
+sudo chown -R asterisk:asterisk /etc/asterisk
+```
+
+Configure service default settings:
+
+```bash
+sudo sed -i 's/#AST_USER="asterisk"/AST_USER="asterisk"/' /etc/default/asterisk
+sudo sed -i 's/#AST_GROUP="asterisk"/AST_GROUP="asterisk"/' /etc/default/asterisk
+```
+
+Configure Asterisk's internal run user/group in `/etc/asterisk/asterisk.conf`:
+
+```bash
+sudo touch /etc/asterisk/asterisk.conf
+sudo sed -i 's/;runuser = asterisk/runuser = asterisk/' /etc/asterisk/asterisk.conf
+sudo sed -i 's/;rungroup = asterisk/rungroup = asterisk/' /etc/asterisk/asterisk.conf
+```
+
+**7. Create Minimal Bootstrap Configuration Files**
+
+Since `make samples` was skipped, create essential config files:
+
+*   **`modules.conf`** (Tells Asterisk which modules to load):
+    ```bash
+    cat << EOF | sudo tee /etc/asterisk/modules.conf > /dev/null
+    [modules]
+    autoload=yes
+    ; Add noload => res_odbc.so if you compiled it but don't want it loaded by default
+    ; Add noload => func_odbc.so if you compiled it but don't want it loaded by default
+    EOF
+    ```
+
+*   **`logger.conf`** (Basic logging setup):
+    ```bash
+    cat << EOF | sudo tee /etc/asterisk/logger.conf > /dev/null
+    [general]
+    dateformat=%F %T
+
+    [logfiles]
+    console => notice,warning,error
+    messages => notice,warning,error
+    full => notice,warning,error,debug,verbose
+    EOF
+    ```
+
+*   Set ownership again:
+    ```bash
+    sudo chown asterisk:asterisk /etc/asterisk
+    ```
+
+**8. Start, Enable, and Verify Asterisk Service**
+
+Start the service:
+
+```bash
+sudo systemctl start asterisk
+```
+
+Enable it to start on boot:
+
+```bash
+sudo systemctl enable asterisk
+```
+
+Check the status (look for `active (running)`):
+
+```bash
+sudo systemctl status asterisk
+```
+
+Connect to the Asterisk CLI (Command Line Interface):
+
+```bash
+sudo asterisk -rvvv
+```
+
+You should see the Asterisk CLI prompt (e.g., `hostname*CLI>`). Type `core show version` to confirm, then `exit`.
+
+If the service fails to start or you cannot connect, check the logs for errors:
+`sudo tail -n 50 /var/log/asterisk/messages`
+`sudo tail -n 50 /var/log/asterisk/full`
+
+---

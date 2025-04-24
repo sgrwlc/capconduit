@@ -163,3 +163,6 @@ migrations/versions/
 *.local
 .python-version
 dbcleanup.sh
+masterplan.md
+handoff.md
+progress.md

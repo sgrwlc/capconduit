@@ -47,7 +47,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
     # Use the base DATABASE_URI or provide a fallback specifically for development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or \
-        'postgresql://capconduit_user:password@localhost:5432/capconduit_db' # Development fallback
+        'postgresql://asterisk:password@localhost:5432/asterisk' # Development fallback
     # Add development-specific settings
     SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'False').lower() in ('true', '1', 't') # Optional SQL echoing via env var
     print(f"INFO: Development mode enabled. SQLALCHEMY_ECHO={SQLALCHEMY_ECHO}")
@@ -60,8 +60,8 @@ class TestingConfig(Config):
     # Ensure a separate TEST_DATABASE_URI is used if possible, otherwise use the main one with caution
     # Default to a specific test DB name if TEST_DATABASE_URI isn't set in .env
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URI') or \
-        os.environ.get('DATABASE_URI', '').replace('capconduit_db', 'capconduit_test_db') or \
-        'postgresql://capconduit_user:password@localhost:5432/capconduit_test_db' # Testing fallback
+        os.environ.get('DATABASE_URI', '').replace('asterisk', 'asterisk_test') or \
+        'postgresql://asterisk:password@localhost:5432/asterisk_test' # Testing fallback
 
     WTF_CSRF_ENABLED = False # Disable CSRF protection in tests
     SQLALCHEMY_ECHO = False # Usually disable echoing in tests unless debugging SQL

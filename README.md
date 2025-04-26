@@ -107,15 +107,15 @@ pip install -r requirements.txt
 *   Create the database user and the two required databases (main and test).
     ```sql
     -- Replace 'YourSecurePassword' - use a strong password!
-    CREATE USER capconduit_user WITH PASSWORD 'YourSecurePassword';
+    CREATE USER asterisk WITH PASSWORD 'YourSecurePassword';
 
     -- Create main database
-    CREATE DATABASE capconduit_db OWNER capconduit_user;
-    GRANT ALL PRIVILEGES ON DATABASE capconduit_db TO capconduit_user;
+    CREATE DATABASE asterisk OWNER asterisk;
+    GRANT ALL PRIVILEGES ON DATABASE asterisk TO asterisk;
 
     -- Create test database
-    CREATE DATABASE capconduit_test_db OWNER capconduit_user;
-    GRANT ALL PRIVILEGES ON DATABASE capconduit_test_db TO capconduit_user;
+    CREATE DATABASE asterisk_test OWNER asterisk;
+    GRANT ALL PRIVILEGES ON DATABASE asterisk_test TO asterisk;
     ```
 
 **4.6. Configure Environment Variables (`.env`):**
@@ -123,8 +123,8 @@ pip install -r requirements.txt
 *   Create a `.env` file in the project root (`capconduit/`) or you can use the structure the included in the repository.
 *   **Critically, edit `.env` and set:**
     *   `SECRET_KEY`: Generate a strong key (`python -c 'import secrets; print(secrets.token_hex(32))'`).
-    *   `DATABASE_URI`: Connection string for the main DB (e.g., `postgresql://capconduit_user:YourEncodedPassword@localhost:5432/capconduit_db`).
-    *   `TEST_DATABASE_URI`: Connection string for the test DB (e.g., `postgresql://capconduit_user:YourEncodedPassword@localhost:5432/capconduit_test_db`).
+    *   `DATABASE_URI`: Connection string for the main DB (e.g., `postgresql://asterisk:YourEncodedPassword@localhost:5432/asterisk`).
+    *   `TEST_DATABASE_URI`: Connection string for the test DB (e.g., `postgresql://asterisk:YourEncodedPassword@localhost:5432/asterisk_test`).
     *   `INTERNAL_API_TOKEN`: Generate a secure random token.
     *   `FLASK_ENV`: Set to `development` for local setup.
 *   **Important:** URL-encode your password if it contains special characters (e.g., `@` becomes `%40`, `/` becomes `%2F`). Add `.env` to your global or project `.gitignore`.
@@ -204,11 +204,11 @@ pip install -r requirements.txt
 
 ---
 
-# Consolidated Guide: Installing Asterisk 20 from Source on Debian 12 for CapConduit
+**Consolidated Guide: Installing Asterisk 20 from Source on Debian 12 for CapConduit**
 
 This guide details installing Asterisk 20 from source, including dependencies needed for PJSIP, PostgreSQL Realtime Architecture (ARA) integration, and AGI scripting used by the CapConduit platform.
 
-## 1. Update System Packages
+**1. Update System Packages**
 
 Ensure your package list and installed packages are up-to-date:
 
@@ -217,7 +217,7 @@ sudo apt update
 sudo apt upgrade -y
 ```
 
-## 2. Install Dependencies
+**2. Install Dependencies**
 
 Install essential build tools, libraries required for Asterisk core features, and specific libraries needed for CapConduit's PostgreSQL ARA integration and AGI scripting:
 
@@ -241,7 +241,7 @@ sudo apt install -y \
     libpq-dev
 ```
 
-## 3. Download and Extract Asterisk Source Code
+**3. Download and Extract Asterisk Source Code**
 
 Navigate to the `/usr/src` directory, download the latest stable Asterisk 20 tarball, and extract it:
 
@@ -253,7 +253,7 @@ sudo tar -xvf asterisk-20-current.tar.gz
 cd asterisk-20.*
 ```
 
-## 4. Configure Asterisk Build Options (Menuselect)
+**4. Configure Asterisk Build Options (Menuselect)**
 
 Run the initial configuration script:
 
@@ -303,7 +303,7 @@ Ensure the following are **DISABLED** (`[ ]`):
 
 Press `x` to save and exit `menuselect`.
 
-## 5. Compile and Install Asterisk
+**5. Compile and Install Asterisk**
 
 Compile Asterisk using multiple cores for speed:
 
@@ -318,7 +318,9 @@ Install the compiled binaries and modules:
 sudo make install
 ```
 
-**DO NOT RUN `make samples`**. We will create configurations manually.
+```bash
+sudo make samples
+```
 
 Install the systemd service files and create basic configuration directories:
 
@@ -335,7 +337,7 @@ sudo ldconfig
 *Verification (Optional):* Check if the binary exists (even if `which` doesn't find it for your user):
 `ls -l /usr/sbin/asterisk`
 
-## 6. Set Up Asterisk User and Permissions
+**6. Set Up Asterisk User and Permissions**
 
 Create a dedicated Asterisk user and group:
 
@@ -365,44 +367,15 @@ sudo sed -i 's/#AST_GROUP="asterisk"/AST_GROUP="asterisk"/' /etc/default/asteris
 Configure Asterisk's internal run user/group in `/etc/asterisk/asterisk.conf`:
 
 ```bash
-sudo touch /etc/asterisk/asterisk.conf
 sudo sed -i 's/;runuser = asterisk/runuser = asterisk/' /etc/asterisk/asterisk.conf
 sudo sed -i 's/;rungroup = asterisk/rungroup = asterisk/' /etc/asterisk/asterisk.conf
 ```
+Set ownership again:
+```bash
+sudo chown asterisk:asterisk /etc/asterisk
+```
 
-## 7. Create Minimal Bootstrap Configuration Files
-
-Since `make samples` was skipped, create essential config files:
-
-*   **`modules.conf`** (Tells Asterisk which modules to load):
-    ```bash
-    cat << EOF | sudo tee /etc/asterisk/modules.conf > /dev/null
-    [modules]
-    autoload=yes
-    ; Add noload => res_odbc.so if you compiled it but don't want it loaded by default
-    ; Add noload => func_odbc.so if you compiled it but don't want it loaded by default
-    EOF
-    ```
-
-*   **`logger.conf`** (Basic logging setup):
-    ```bash
-    cat << EOF | sudo tee /etc/asterisk/logger.conf > /dev/null
-    [general]
-    dateformat=%F %T
-
-    [logfiles]
-    console => notice,warning,error
-    messages => notice,warning,error
-    full => notice,warning,error,debug,verbose
-    EOF
-    ```
-
-*   Set ownership again:
-    ```bash
-    sudo chown asterisk:asterisk /etc/asterisk
-    ```
-
-## 8. Start, Enable, and Verify Asterisk Service
+**7. Start, Enable, and Verify Asterisk Service**
 
 Start the service:
 

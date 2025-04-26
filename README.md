@@ -67,11 +67,17 @@ Follow these steps to set up the development environment on a Debian/Ubuntu-base
 
 **4.1. Prerequisites:**
 
-*   Git
-*   Python 3.11+ (use of `pyenv` is highly recommended: [https://github.com/pyenv/pyenv](https://github.com/pyenv/pyenv))
-*   PostgreSQL Server (v12+) installed and running.
-*   `psql` command-line tool installed and in PATH.
-*   Basic build tools (usually covered by `build-essential` on Debian/Ubuntu).
+```bash
+# Set up system for build essentials
+sudo apt install git build-essential wget subversion
+```
+
+```bash
+# Set up PostgreSQL
+sudo apt install postgresql postgresql-contrib
+sudo systemctl enable postgresql
+sudo systemctl start postgresql
+```
 
 **4.2. Clone Repository:**
 
@@ -82,18 +88,37 @@ cd capconduit
 
 **4.3. Set up Python Environment:**
 
-```bash
-# Optional: Install and set Python version using pyenv
-# pyenv install 3.11+
-# pyenv local 3.11+ # Creates .python-version if not present
 
-# Create virtual environment
-python -m venv venv
+* Setting up Pyenv on Vanilla Debian 12
+	```bash
+	git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+	cd ~/.pyenv && src/configure && make -C src
+	```
+* Add the following commands to `~/.bashrc` and restart the shell.
+	```bash
+	echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+	echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+	echo 'eval "$(pyenv init - bash)"' >> ~/.bashrc
+	exec "$SHELL"
+	```
+	
+* Add the following commands to `~/.profile`
+	```bash
+	echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.profile
+	echo '[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.profile
+	echo 'eval "$(pyenv init - bash)"' >> ~/.profile
+	```
+* Install Python using Pyenv
+	```bash
+	pyenv install 3.13.3
+	pyenv local 3.13.3
+	python -m venv venv
+	source venv/bin/activate
 
-# Activate virtual environment
-source venv/bin/activate
-# Windows: venv\Scripts\activate
-```
+	# Install Global Python (optional)
+	pyenv install 3.11.12
+	pyenv global 3.11.12
+	```
 
 **4.4. Install Dependencies:**
 
@@ -103,28 +128,32 @@ pip install -r requirements.txt
 
 **4.5. Setup PostgreSQL Database & User:**
 
-*   Connect to PostgreSQL as a superuser (e.g., `postgres`).
-*   Create the database user and the two required databases (main and test).
-    ```sql
-    -- Replace 'YourSecurePassword' - use a strong password!
-    CREATE USER asterisk WITH PASSWORD 'YourSecurePassword';
+```bash
+# Access Postgres using default postgres user
+sudo -i -u postgres
+psql
+```
+Create the database user and the two required databases (main and test).
+```sql
+-- Replace 'YourSecurePassword' - use a strong password!
+CREATE USER asterisk WITH PASSWORD 'YourSecurePassword';
 
-    -- Create main database
-    CREATE DATABASE asterisk OWNER asterisk;
-    GRANT ALL PRIVILEGES ON DATABASE asterisk TO asterisk;
+-- Create main database
+CREATE DATABASE asterisk OWNER asterisk;
+GRANT ALL PRIVILEGES ON DATABASE asterisk TO asterisk;
 
-    -- Create test database
-    CREATE DATABASE asterisk_test OWNER asterisk;
-    GRANT ALL PRIVILEGES ON DATABASE asterisk_test TO asterisk;
-    ```
+-- Create test database
+CREATE DATABASE asterisk_test OWNER asterisk;
+GRANT ALL PRIVILEGES ON DATABASE asterisk_test TO asterisk;
+```
 
 **4.6. Configure Environment Variables (`.env`):**
 
 *   Create a `.env` file in the project root (`capconduit/`) or you can use the structure the included in the repository.
 *   **Critically, edit `.env` and set:**
     *   `SECRET_KEY`: Generate a strong key (`python -c 'import secrets; print(secrets.token_hex(32))'`).
-    *   `DATABASE_URI`: Connection string for the main DB (e.g., `postgresql://asterisk:YourEncodedPassword@localhost:5432/asterisk`).
-    *   `TEST_DATABASE_URI`: Connection string for the test DB (e.g., `postgresql://asterisk:YourEncodedPassword@localhost:5432/asterisk_test`).
+    *   `DATABASE_URI`: Connection string for the main DB (e.g., `postgresql://asterisk:password@localhost:5432/asterisk`).
+    *   `TEST_DATABASE_URI`: Connection string for the test DB (e.g., `postgresql://asterisk:password@localhost:5432/asterisk_test`).
     *   `INTERNAL_API_TOKEN`: Generate a secure random token.
     *   `FLASK_ENV`: Set to `development` for local setup.
 *   **Important:** URL-encode your password if it contains special characters (e.g., `@` becomes `%40`, `/` becomes `%2F`). Add `.env` to your global or project `.gitignore`.
@@ -255,8 +284,13 @@ cd asterisk-20.*
 
 **4. Configure Asterisk Build Options (Menuselect)**
 
-Run the initial configuration script:
+Install system dependencies using the provided tool:
 
+```bash
+sudo contrib/scripts/install_prereq install
+```
+
+Run the initial configuration script:
 ```bash
 sudo ./configure
 ```
@@ -268,38 +302,10 @@ sudo make menuselect
 ```
 
 Navigate the menu using arrow keys, Enter, and Spacebar. Ensure the following are **ENABLED** (`[*]`):
-
-*   **Resource Modules:**
-    *   `res_config_pgsql` *(Essential for CapConduit ARA)*
-    *   `res_pjsip` *(Core PJSIP)*
-    *   `res_pjsip_session`, `res_pjsip_pubsub`, `res_pjsip_outbound_registration`, `res_pjsip_endpoint_identifier_ip` *(Common PJSIP resources)*
-    *   `res_sorcery_config` *(Needed for PJSIP config backend)*
-    *   `res_odbc` *(Useful for func_odbc if needed)*
-    *   `res_agi` *(Essential for AGI scripting)*
-    *   `res_crypto`, `res_rtp_asterisk`, `res_timing_timerfd` *(Core resources)*
-*   **Channel Drivers:**
-    *   `chan_pjsip` *(The required PJSIP channel driver)*
-*   **Applications:**
-    *   `app_dial`, `app_hangup`, `app_playback`, `app_answer`, `app_agi`, `app_set`
-    *   `app_groupcount` *(Essential for concurrency checking)*
-    *   `app_stack` *(Core dialplan functions)*
-*   **Functions:**
-    *   `func_group_count` *(For GROUP_COUNT())*
-    *   `func_channel`, `func_callerid`, `func_cdr`, `func_strings`
-    *   `func_odbc` *(Enable if needed for complex dialplan DB lookups)*
 *   **Core Sound Packages:**
     *   Select desired English formats (e.g., `CORE-SOUNDS-EN-ULAW`, `CORE-SOUNDS-EN-ALAW`, `CORE-SOUNDS-EN-GSM`)
 *   **Extras Sound Packages:** (Optional)
     *   Select corresponding English formats.
-
-Ensure the following are **DISABLED** (`[ ]`):
-
-*   **Channel Drivers:**
-    *   `chan_sip` *(Use PJSIP instead)*
-    *   Others not needed (e.g., `chan_iax2`, `chan_dahdi` unless required)
-*   **Resource Modules:**
-    *   `res_config_odbc` *(Use res_config_pgsql for PJSIP ARA)*
-    *   Others not needed (e.g., `res_config_ldap`, `res_config_sqlite3`)
 
 Press `x` to save and exit `menuselect`.
 
@@ -346,6 +352,12 @@ sudo groupadd asterisk
 sudo useradd -r -d /var/lib/asterisk -g asterisk asterisk
 ```
 
+Ensure these lines are present in the file `/etc/default/asterisk`
+```bash
+AST_USER="asterisk"
+AST_GROUP="asterisk"
+RUNASTERISK=yes
+```
 Set correct ownership for Asterisk directories (including the config directory):
 
 ```bash
@@ -355,13 +367,6 @@ sudo chown -R asterisk:asterisk /var/run/asterisk
 sudo chown -R asterisk:asterisk /var/spool/asterisk
 sudo chown -R asterisk:asterisk /usr/lib/asterisk
 sudo chown -R asterisk:asterisk /etc/asterisk
-```
-
-Configure service default settings:
-
-```bash
-sudo sed -i 's/#AST_USER="asterisk"/AST_USER="asterisk"/' /etc/default/asterisk
-sudo sed -i 's/#AST_GROUP="asterisk"/AST_GROUP="asterisk"/' /etc/default/asterisk
 ```
 
 Configure Asterisk's internal run user/group in `/etc/asterisk/asterisk.conf`:
@@ -380,6 +385,7 @@ sudo chown asterisk:asterisk /etc/asterisk
 Start the service:
 
 ```bash
+sudo systemctl daemon-reload
 sudo systemctl start asterisk
 ```
 
